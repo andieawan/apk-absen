@@ -1,18 +1,30 @@
+// =============================
+// Komponen Data Siswa
+// Halaman ini menampilkan daftar siswa beserta kelasnya.
+// Fitur: filter berdasarkan kelas dan export data siswa ke Excel.
+// Kode ini mudah dipahami dan dimodifikasi, cocok untuk pemula yang ingin belajar React + TypeScript.
+// Untuk menambah/mengedit fitur, cukup modifikasi bagian return atau tambahkan fungsi baru sesuai kebutuhan.
+// =============================
+
 import { useState } from 'react';
 import { db } from '../utils/db';
 import { appTheme } from '../utils/auth';
 import * as XLSX from 'xlsx';
 
 export default function StudentPage() {
+  // Ambil data siswa dan kelas dari database lokal
   const students = db.getStudents();
   const classes = db.getClasses();
+  // State untuk filter kelas
   const [selectedClass, setSelectedClass] = useState('');
 
+  // Filter siswa berdasarkan kelas yang dipilih
   const filteredStudents = selectedClass ? students.filter(s => s.classId === selectedClass) : students;
 
   return (
     <div style={{ background: appTheme.card, borderRadius: appTheme.radius, boxShadow: appTheme.shadow, border: `1px solid ${appTheme.border}`, padding: 32, marginTop: 16, color: appTheme.text }}>
       <h2 style={{ color: appTheme.primaryColor, marginTop: 0, marginBottom: 24, textAlign: 'center', fontWeight: 800 }}>Data Siswa</h2>
+      {/* Filter kelas untuk memudahkan pencarian siswa */}
       <div style={{ marginBottom: 24, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
         <label style={{ fontWeight: 600, color: appTheme.text }}>
           Filter Kelas:
@@ -23,8 +35,10 @@ export default function StudentPage() {
             ))}
           </select>
         </label>
+        {/* Tombol export data siswa ke Excel */}
         <button
           onClick={() => {
+            // Data yang diexport: Nama Siswa dan Kelas
             const data = [['Nama Siswa', 'Kelas']];
             filteredStudents.forEach(s => {
               data.push([s.name, classes.find(k => k.id === s.classId)?.name || '-']);
@@ -39,6 +53,7 @@ export default function StudentPage() {
           Export Data Siswa (Excel)
         </button>
       </div>
+      {/* Tabel data siswa */}
       <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255,255,255,0.96)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px #0001' }}>
         <thead style={{ background: appTheme.primaryColor, color: '#fff' }}>
           <tr>

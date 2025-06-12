@@ -1,3 +1,8 @@
+// =============================
+// Komponen Dashboard
+// Halaman utama navigasi aplikasi, menampilkan menu ke semua fitur utama.
+// Kode ini mudah dimodifikasi, cocok untuk pemula yang ingin menambah menu atau mengatur hak akses fitur.
+// =============================
 // src/components/Dashboard.tsx
 import type { UserRole } from '../types/User';
 import AttendancePage from './AttendancePage';
@@ -9,6 +14,7 @@ import ExportPage from './ExportPage';
 import RecapAttendancePage from './RecapAttendancePage';
 import ClassPage from './ClassPage';
 import StudentPage from './StudentPage';
+import ImportTeacherSchedule from './ImportTeacherSchedule';
 import { appTheme } from '../utils/auth';
 import { useState, useEffect } from 'react';
 
@@ -117,6 +123,7 @@ export default function Dashboard({ username, role, onLogout }: DashboardProps) 
             <button onClick={() => setPage('export')} style={{ minWidth: 140, background: page==='export'?appTheme.primaryColor:'#f4f6fb', color: page==='export'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Export</button>
             <button onClick={() => setPage('kelas')} style={{ minWidth: 140, background: page==='kelas'?appTheme.primaryColor:'#f4f6fb', color: page==='kelas'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Kelas</button>
             <button onClick={() => setPage('student')} style={{ minWidth: 140, background: page==='student'?appTheme.primaryColor:'#f4f6fb', color: page==='student'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Data Siswa</button>
+            <button onClick={() => setPage('import-teacher-schedule')} style={{ minWidth: 140, background: page==='import-teacher-schedule'?appTheme.primaryColor:'#f4f6fb', color: page==='import-teacher-schedule'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Import Guru & Jadwal</button>
           </div>
           {!page && (
             <div style={{ color: appTheme.text, textAlign: 'center', marginTop: 32, fontSize: 16, fontWeight: 500 }}>
@@ -134,6 +141,7 @@ export default function Dashboard({ username, role, onLogout }: DashboardProps) 
         {(role === 'admin' || page === 'export') && page === 'export' && <ExportPage />}
         {(role === 'admin' || page === 'kelas') && page === 'kelas' && <ClassPage />}
         {page === 'student' && <StudentPage />}
+        {(role === 'admin' || page === 'import-teacher-schedule') && page === 'import-teacher-schedule' && <ImportTeacherSchedule onImport={() => {}} />}
       </div>
     </div>
   );

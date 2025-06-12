@@ -1,3 +1,10 @@
+// =============================
+// Komponen Dashboard Analitik
+// Menampilkan ringkasan statistik kehadiran (hadir, izin, sakit, alfa) dan rata-rata nilai siswa.
+// Cocok untuk menampilkan insight cepat bagi admin/guru.
+// Kode sederhana, mudah dikembangkan untuk pemula.
+// =============================
+
 import { useState } from 'react';
 import { appTheme } from '../utils/auth';
 

@@ -1,3 +1,11 @@
+// =============================
+// Komponen Halaman Kelas
+// Menampilkan daftar kelas, fitur tambah, edit, hapus kelas, dan melihat daftar siswa per kelas.
+// Ada juga tombol export data kelas & siswa ke Excel.
+// Kode ini mudah dipahami, cocok untuk pemula dan pengembang yang ingin menambah fitur manajemen kelas.
+// Dokumentasi: Setiap fungsi utama diberi nama jelas, dan bagian return mudah dimodifikasi untuk pengembangan fitur baru.
+// =============================
+
 import { useState } from 'react';
 import { db } from '../utils/db';
 import { appTheme } from '../utils/auth';

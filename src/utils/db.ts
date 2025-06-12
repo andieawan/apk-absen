@@ -1,4 +1,10 @@
-// src/utils/db.ts
+// =============================
+// Database Lokal Sederhana (utils/db.ts)
+// Berisi struktur data, dummy data, dan fungsi CRUD untuk siswa, kelas, absensi, dan nilai.
+// Cocok untuk belajar konsep database sederhana di aplikasi web.
+// Mudah dikembangkan untuk backend sungguhan.
+// =============================
+
 // Simple localStorage-based database for demo (can be replaced with real backend)
 
 export interface Class {
@@ -27,6 +33,25 @@ export interface Grade {
   value: number;
 }
 
+export interface Teacher {
+  id: string;
+  name: string;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+}
+
+export interface Schedule {
+  id: string;
+  teacherId: string;
+  subjectId: string;
+  classId: string;
+  day: string;
+  time: string;
+}
+
 const DB_KEY = 'absensi_app_db';
 
 export interface DBData {
@@ -34,24 +59,33 @@ export interface DBData {
   attendance: Attendance[];
   grades: Grade[];
   classes: Class[];
+  teachers: Teacher[];
+  subjects: Subject[];
+  schedules: Schedule[];
 }
 
 function getDB(): DBData {
   const raw = localStorage.getItem(DB_KEY);
-  if (!raw) return { students: [], attendance: [], grades: [], classes: [] };
+  if (!raw) return { students: [], attendance: [], grades: [], classes: [], teachers: [], subjects: [], schedules: [] };
   try {
     const data = JSON.parse(raw);
     // Pastikan field classes ada
     if (!data.classes) data.classes = [];
+    if (!data.teachers) data.teachers = [];
+    if (!data.subjects) data.subjects = [];
+    if (!data.schedules) data.schedules = [];
     return data;
   } catch {
-    return { students: [], attendance: [], grades: [], classes: [] };
+    return { students: [], attendance: [], grades: [], classes: [], teachers: [], subjects: [], schedules: [] };
   }
 }
 
 function setDB(data: DBData) {
   // Pastikan field classes ada
   if (!data.classes) data.classes = [];
+  if (!data.teachers) data.teachers = [];
+  if (!data.subjects) data.subjects = [];
+  if (!data.schedules) data.schedules = [];
   localStorage.setItem(DB_KEY, JSON.stringify(data));
 }
 
@@ -80,7 +114,25 @@ export const db = {
     dbData.grades.push(grade);
     setDB(dbData);
   },
-  clear: () => setDB({ students: [], attendance: [], grades: [], classes: [] }),
+  getTeachers: (): Teacher[] => getDB().teachers,
+  addTeacher: (teacher: Teacher) => {
+    const dbData = getDB();
+    dbData.teachers.push(teacher);
+    setDB(dbData);
+  },
+  getSubjects: (): Subject[] => getDB().subjects,
+  addSubject: (subject: Subject) => {
+    const dbData = getDB();
+    dbData.subjects.push(subject);
+    setDB(dbData);
+  },
+  getSchedules: (): Schedule[] => getDB().schedules,
+  addSchedule: (schedule: Schedule) => {
+    const dbData = getDB();
+    dbData.schedules.push(schedule);
+    setDB(dbData);
+  },
+  clear: () => setDB({ students: [], attendance: [], grades: [], classes: [], teachers: [], subjects: [], schedules: [] }),
   getOfflineData: (): Attendance[] => getDB().attendance,
   clearOfflineData: () => {
     const dbData = getDB();
@@ -123,6 +175,27 @@ export const dummyGrades = [
   { id: 'g5', studentId: 's5', category: 'Tugas', value: 92 },
 ];
 
+// Data dummy guru untuk testing
+export const dummyTeachers = [
+  { id: 't1', name: 'Guru Besar' },
+  { id: 't2', name: 'Dra. Siti' },
+  { id: 't3', name: 'Mr. John' },
+];
+
+// Data dummy pelajaran untuk testing
+export const dummySubjects = [
+  { id: 'sub1', name: 'Matematika' },
+  { id: 'sub2', name: 'Bahasa Indonesia' },
+  { id: 'sub3', name: 'Fisika' },
+];
+
+// Data dummy jadwal untuk testing
+export const dummySchedules = [
+  { id: 'j1', teacherId: 't1', subjectId: 'sub1', classId: 'k1', day: 'Senin', time: '08:00' },
+  { id: 'j2', teacherId: 't2', subjectId: 'sub2', classId: 'k1', day: 'Senin', time: '10:00' },
+  { id: 'j3', teacherId: 't3', subjectId: 'sub3', classId: 'k2', day: 'Selasa', time: '08:00' },
+];
+
 // Fungsi untuk mengisi database dengan data dummy
 export function seedDummyData() {
   setDB({
@@ -130,5 +203,8 @@ export function seedDummyData() {
     attendance: dummyAttendance,
     grades: dummyGrades,
     classes: dummyClasses,
+    teachers: dummyTeachers,
+    subjects: dummySubjects,
+    schedules: dummySchedules,
   });
 }

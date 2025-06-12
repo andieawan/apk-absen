@@ -1,0 +1,6 @@
+// Template Import Guru & Jadwal
+// Kolom: Nama Guru | Mata Pelajaran | Kelas | Hari | Jam
+Nama Guru	Mata Pelajaran	Kelas	Hari	Jam
+Guru 1	Matematika	X IPA 1	Senin	07:00-08:30
+Guru 2	Bahasa Inggris	X IPA 2	Selasa	08:30-10:00
+Guru 3	Fisika	X IPS 1	Rabu	10:00-11:30

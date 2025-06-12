@@ -1,3 +1,10 @@
+// =============================
+// Komponen Rekap Absensi
+// Menampilkan rekap absensi siswa, filter berdasarkan tanggal, siswa, dan kelas.
+// Fitur: export ke Excel, PDF, print, dan rekap per kategori serta per kelas.
+// Kode ini mudah dipahami, cocok untuk pemula dan pengembang yang ingin menambah fitur rekap data.
+// =============================
+
 import { useState } from 'react';
 import { appTheme } from '../utils/auth';
 import { db } from '../utils/db';

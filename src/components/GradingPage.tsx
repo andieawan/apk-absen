@@ -1,3 +1,9 @@
+// =============================
+// Komponen Penilaian Siswa
+// Fitur: input kategori penilaian (bobot), tambah siswa, dan input nilai per kategori.
+// Kode sederhana, mudah dikembangkan untuk pemula.
+// =============================
+
 import { useState } from 'react';
 import { appTheme } from '../utils/auth';
 

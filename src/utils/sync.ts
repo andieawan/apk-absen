@@ -1,3 +1,10 @@
+// =============================
+// Utilitas Sinkronisasi Offline/Online
+// Fitur: sync data offline ke server, clear data offline setelah sukses.
+// Cocok untuk aplikasi PWA/offline-first.
+// Kode sederhana, mudah dikembangkan untuk pemula.
+// =============================
+
 import { db } from './db';
 
 const SERVER_URL = process.env.REACT_APP_SERVER_URL || '/api/sync';

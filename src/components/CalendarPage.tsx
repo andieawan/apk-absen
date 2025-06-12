@@ -1,3 +1,10 @@
+// =============================
+// Komponen Kalender Kehadiran
+// Menampilkan kalender bulanan, navigasi bulan, dan highlight hari ini.
+// Cocok untuk integrasi jadwal & absensi di masa depan.
+// Kode sederhana, mudah dikembangkan untuk pemula.
+// =============================
+
 import { useState } from 'react';
 import { appTheme } from '../utils/auth';
 

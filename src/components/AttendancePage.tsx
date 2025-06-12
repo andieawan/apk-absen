@@ -1,3 +1,9 @@
+// =============================
+// Komponen Halaman Absensi
+// Fitur: input absensi siswa per tanggal, edit kategori (hadir, izin, sakit, alfa), dan catatan.
+// Mendukung filter tanggal, export ke Excel, dan akses multi-role (admin, guru mapel, wali kelas).
+// Kode mudah dipahami, cocok untuk pemula yang ingin belajar absensi berbasis React.
+// =============================
 // src/components/AttendancePage.tsx
 import { useState, useEffect } from 'react';
 import { appTheme } from '../utils/auth';

@@ -1,3 +1,8 @@
+// =============================
+// Utilitas Autentikasi & Tema
+// Berisi data user, fungsi autentikasi, dan tema aplikasi (appTheme).
+// Mudah dikembangkan untuk menambah user/role baru.
+// =============================
 // src/utils/auth.ts
 import type { User, UserRole } from '../types/User';
 

@@ -1,3 +1,9 @@
+// =============================
+// Komponen Export & Cetak Laporan
+// Fitur: export data tabel ke Excel/CSV, contoh laporan sederhana.
+// Cocok untuk pemula yang ingin belajar export data di React.
+// =============================
+
 import { useRef } from 'react';
 import { appTheme } from '../utils/auth';
 import * as XLSX from 'xlsx';
