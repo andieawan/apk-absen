@@ -7,7 +7,17 @@
 // src/components/AttendancePage.tsx
 import { useState, useEffect } from 'react';
 import { appTheme } from '../utils/auth';
-import { db, type Attendance, type Student } from '../utils/db';
+import { type Attendance, type Student } from '../utils/db';
+import { dbFirestore } from '../utils/firebase';
+import {
+  collection,
+  getDocs,
+  setDoc,
+  doc,
+  query,
+  where,
+  deleteDoc,
+} from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 
 const categories = [
@@ -28,37 +38,49 @@ export default function AttendancePage({ role }: AttendancePageProps) {
   const [records, setRecords] = useState<Attendance[]>([]);
   const [editState, setEditState] = useState<{[id: string]: {category: string, note: string}} | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const allStudents = db.getStudents();
-    setStudents(allStudents);
-    const todayRecords = db.getAttendance().filter(a => a.date === selectedDate);
-    setRecords(todayRecords);
-    // Jika belum ada absensi di tanggal terpilih dan tanggal itu adalah hari ini, inisialisasi editState semua siswa ke hadir
-    if (selectedDate === new Date().toISOString().slice(0, 10) && todayRecords.length === 0 && allStudents.length > 0) {
-      const initial: {[id: string]: {category: string, note: string}} = {};
-      allStudents.forEach(s => {
-        initial[s.id] = { category: 'hadir', note: '' };
+    async function fetchData() {
+      setLoading(true);
+      // Ambil data siswa dari Firestore
+      const snapStudents = await getDocs(collection(dbFirestore, 'students'));
+      const studentsData = snapStudents.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          name: d.name ?? '',
+          classId: d.classId ?? '',
+        } as Student;
       });
-      setEditState(initial);
-    } else {
-      setEditState(null);
-    }
-    // Tambahkan data dummy absensi untuk hari kemarin jika belum ada
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const attendance = db.getAttendance();
-    const hasYesterday = attendance.some(a => a.date === yesterday);
-    if (!hasYesterday && allStudents.length > 0) {
-      allStudents.forEach((s, idx) => {
-        db.addAttendance({
-          id: s.id + yesterday,
-          studentId: s.id,
-          date: yesterday,
-          category: idx % 4 === 0 ? 'hadir' : idx % 4 === 1 ? 'izin' : idx % 4 === 2 ? 'sakit' : 'alfa',
-          note: idx % 4 === 1 ? 'Izin keluarga' : idx % 4 === 2 ? 'Sakit flu' : idx % 4 === 3 ? 'Tanpa keterangan' : '',
+      setStudents(studentsData);
+      // Ambil data absensi dari Firestore untuk tanggal terpilih
+      const q = query(collection(dbFirestore, 'attendance'), where('date', '==', selectedDate));
+      const snapAttendance = await getDocs(q);
+      const attendanceData = snapAttendance.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          studentId: d.studentId ?? '',
+          date: d.date ?? '',
+          category: d.category ?? '',
+          note: d.note ?? '',
+        } as Attendance;
+      });
+      setRecords(attendanceData);
+      // Inisialisasi editState jika hari ini dan belum ada absensi
+      if (selectedDate === new Date().toISOString().slice(0, 10) && attendanceData.length === 0 && studentsData.length > 0) {
+        const initial: {[id: string]: {category: string, note: string}} = {};
+        studentsData.forEach(s => {
+          initial[s.id] = { category: 'hadir', note: '' };
         });
-      });
+        setEditState(initial);
+      } else {
+        setEditState(null);
+      }
+      setLoading(false);
     }
+    fetchData();
   }, [selectedDate]);
 
   const handleEdit = (studentId: string, field: 'category' | 'note', value: string) => {
@@ -71,7 +93,7 @@ export default function AttendancePage({ role }: AttendancePageProps) {
     }));
   };
 
-  const handleSave = (studentId: string) => {
+  const handleSave = async (studentId: string) => {
     const edit = editState?.[studentId];
     if (!edit) return;
     // Cari record absensi hari ini untuk siswa ini
@@ -83,58 +105,79 @@ export default function AttendancePage({ role }: AttendancePageProps) {
       category: edit.category,
       note: edit.note,
     };
-    // Jika sudah ada, update, jika belum, tambah baru
-    if (todayRecord) {
-      // Update: hapus record lama, tambah yang baru
-      const dbData = db.getAttendance().filter(a => !(a.studentId === studentId && a.date === selectedDate));
-      // Simpan data baru (replace seluruh attendance di db)
-      const raw = getRawDB();
-      localStorage.setItem('absensi_app_db', JSON.stringify({
-        ...raw,
-        attendance: [...dbData, att],
-      }));
-    } else {
-      db.addAttendance(att);
+    try {
+      await setDoc(doc(dbFirestore, 'attendance', att.id), att, { merge: true });
+      // Refresh data absensi
+      const q = query(collection(dbFirestore, 'attendance'), where('date', '==', selectedDate));
+      const snapAttendance = await getDocs(q);
+      const attendanceData = snapAttendance.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          studentId: d.studentId ?? '',
+          date: d.date ?? '',
+          category: d.category ?? '',
+          note: d.note ?? '',
+        } as Attendance;
+      });
+      setRecords(attendanceData);
+      setEditState(prev => {
+        const next = { ...(prev || {}) };
+        delete next[studentId];
+        return next;
+      });
+    } catch (e) {
+      alert('Gagal menyimpan absensi!');
     }
-    setRecords(db.getAttendance().filter(a => a.date === selectedDate));
-    setEditState(prev => {
-      const next = { ...(prev || {}) };
-      delete next[studentId];
-      return next;
-    });
   };
 
   // Simpan semua absensi sekaligus
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
     if (!editState) return;
-    const raw = getRawDB();
-    // Hapus absensi hari ini
-    const filtered = raw.attendance.filter((a: Attendance) => a.date !== selectedDate);
-    // Tambah absensi baru dari editState
-    const newRecords = students.map(s => ({
-      id: s.id + selectedDate,
-      studentId: s.id,
-      date: selectedDate,
-      category: editState[s.id]?.category || 'hadir',
-      note: editState[s.id]?.note || '',
-    }));
-    localStorage.setItem('absensi_app_db', JSON.stringify({
-      ...raw,
-      attendance: [...filtered, ...newRecords],
-    }));
-    setRecords(newRecords);
-    setEditState(null);
+    try {
+      await Promise.all(students.map(async s => {
+        const att = {
+          id: s.id + selectedDate,
+          studentId: s.id,
+          date: selectedDate,
+          category: editState[s.id]?.category || 'hadir',
+          note: editState[s.id]?.note || '',
+        };
+        await setDoc(doc(dbFirestore, 'attendance', att.id), att, { merge: true });
+      }));
+      // Refresh data absensi
+      const q = query(collection(dbFirestore, 'attendance'), where('date', '==', selectedDate));
+      const snapAttendance = await getDocs(q);
+      const attendanceData = snapAttendance.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          studentId: d.studentId ?? '',
+          date: d.date ?? '',
+          category: d.category ?? '',
+          note: d.note ?? '',
+        } as Attendance;
+      });
+      setRecords(attendanceData);
+      setEditState(null);
+    } catch (e) {
+      alert('Gagal menyimpan semua absensi!');
+    }
   };
 
   // Reset absensi hari ini
-  const handleResetToday = () => {
-    const raw = getRawDB();
-    localStorage.setItem('absensi_app_db', JSON.stringify({
-      ...raw,
-      attendance: raw.attendance.filter((a: Attendance) => a.date !== selectedDate),
-    }));
-    setRecords([]);
-    setEditState(null);
+  const handleResetToday = async () => {
+    try {
+      // Ambil semua dokumen absensi untuk tanggal terpilih
+      const q = query(collection(dbFirestore, 'attendance'), where('date', '==', selectedDate));
+      const snap = await getDocs(q);
+      // Hapus semua dokumen absensi hari ini
+      await Promise.all(snap.docs.map(docSnap => deleteDoc(doc(dbFirestore, 'attendance', docSnap.id))));
+      setRecords([]);
+      setEditState(null);
+    } catch (e) {
+      alert('Gagal reset absensi hari ini!');
+    }
   };
 
   // Export rekap ke Excel
@@ -165,6 +208,24 @@ export default function AttendancePage({ role }: AttendancePageProps) {
     );
   }
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+        <div style={{
+          border: '4px solid #eee',
+          borderTop: `4px solid ${appTheme.primaryColor}`,
+          borderRadius: '50%',
+          width: 48,
+          height: 48,
+          animation: 'spin 1s linear infinite',
+          marginBottom: 16
+        }} />
+        <div style={{ color: appTheme.primaryColor, fontWeight: 600 }}>Memuat data absensi...</div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   // Tombol Simpan Semua hanya muncul jika belum ada absensi hari ini (records.length === 0)
   return (
     <div style={{ background: appTheme.card, borderRadius: appTheme.radius, boxShadow: appTheme.shadow, border: `1px solid ${appTheme.border}`, padding: 32, marginTop: 16, color: appTheme.text, ...appTheme.glass ? { backdropFilter: 'blur(8px)' } : {} }}>
@@ -177,97 +238,94 @@ export default function AttendancePage({ role }: AttendancePageProps) {
           <button onClick={handleSaveAll} style={{ background: appTheme.primaryColor, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 16, cursor: 'pointer' }}>Simpan Semua</button>
         </div>
       )}
-      <div style={{ marginBottom: 24 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255,255,255,0.96)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px #0001', marginBottom: 16 }}>
-          <thead style={{ background: appTheme.primaryColor, color: '#fff' }}>
-            <tr>
-              <th style={{ padding: 12, fontWeight: 700 }}>Nama Siswa</th>
-              <th style={{ padding: 12, fontWeight: 700 }}>Keterangan</th>
-              <th style={{ padding: 12, fontWeight: 700 }}>Catatan</th>
-              <th style={{ padding: 12, fontWeight: 700 }}>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.map((s) => {
-              const todayRecord = records.find(r => r.studentId === s.id);
-              const edit = editState?.[s.id];
-              return (
-                <tr key={s.id} style={{ borderBottom: `1px solid ${appTheme.border}` }}>
-                  <td style={{ padding: 12 }}>{s.name}</td>
-                  <td style={{ padding: 12 }}>
-                    {categories.map(cat => (
-                      <label key={cat.value} style={{ marginRight: 8, fontWeight: 600, color: (edit?.category || todayRecord?.category) === cat.value ? appTheme.primaryColor : appTheme.text }}>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 32 }}>
+          <span style={{ fontSize: 18, color: appTheme.primaryColor }}>Memuat data absensi...</span>
+        </div>
+      ) : (
+        <>
+          <div style={{ marginBottom: 24 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255,255,255,0.96)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px #0001', marginBottom: 16 }}>
+              <thead style={{ background: appTheme.primaryColor, color: '#fff' }}>
+                <tr>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Nama Siswa</th>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Keterangan</th>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Catatan</th>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((s) => {
+                  const todayRecord = records.find(r => r.studentId === s.id);
+                  const edit = editState?.[s.id];
+                  return (
+                    <tr key={s.id} style={{ borderBottom: `1px solid ${appTheme.border}` }}>
+                      <td style={{ padding: 12 }}>{s.name}</td>
+                      <td style={{ padding: 12 }}>
+                        {categories.map(cat => (
+                          <label key={cat.value} style={{ marginRight: 8, fontWeight: 600, color: (edit?.category || todayRecord?.category) === cat.value ? appTheme.primaryColor : appTheme.text }}>
+                            <input
+                              type="radio"
+                              name={`cat-${s.id}`}
+                              value={cat.value}
+                              checked={(edit?.category || todayRecord?.category) === cat.value}
+                              onChange={() => handleEdit(s.id, 'category', cat.value)}
+                            /> {cat.label}
+                          </label>
+                        ))}
+                      </td>
+                      <td style={{ padding: 12 }}>
                         <input
-                          type="radio"
-                          name={`cat-${s.id}`}
-                          value={cat.value}
-                          checked={(edit?.category || todayRecord?.category) === cat.value}
-                          onChange={() => handleEdit(s.id, 'category', cat.value)}
-                        /> {cat.label}
-                      </label>
-                    ))}
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    <input
-                      type="text"
-                      value={edit?.note ?? todayRecord?.note ?? ''}
-                      placeholder="Catatan"
-                      style={{ width: 120, padding: 8, borderRadius: 8, border: `1px solid ${appTheme.border}` }}
-                      onChange={e => handleEdit(s.id, 'note', e.target.value)}
-                    />
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    {editState && edit ? (
-                      <button onClick={() => handleSave(s.id)} style={{ background: appTheme.primaryColor, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontWeight: 700, cursor: 'pointer' }}>{todayRecord ? 'Ubah' : 'Simpan'}</button>
-                    ) : (
-                      todayRecord ? '✔️' : ''
-                    )}
-                  </td>
+                          type="text"
+                          value={edit?.note ?? todayRecord?.note ?? ''}
+                          placeholder="Catatan"
+                          style={{ width: 120, padding: 8, borderRadius: 8, border: `1px solid ${appTheme.border}` }}
+                          onChange={e => handleEdit(s.id, 'note', e.target.value)}
+                        />
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {editState && edit ? (
+                          <button onClick={() => handleSave(s.id)} style={{ background: appTheme.primaryColor, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontWeight: 700, cursor: 'pointer' }}>{todayRecord ? 'Ubah' : 'Simpan'}</button>
+                        ) : (
+                          todayRecord ? '✔️' : ''
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 12 }}>
+            <button onClick={handleExportExcel} style={{ background: appTheme.primaryColor, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontWeight: 700, cursor: 'pointer' }}>Export Rekap Excel</button>
+            <button onClick={handleResetToday} style={{ background: '#fff', color: appTheme.primaryColor, border: `1.5px solid ${appTheme.primaryColor}`, borderRadius: 8, padding: '8px 18px', fontWeight: 700, cursor: 'pointer' }}>Reset Absensi Hari Ini</button>
+          </div>
+          <h3 style={{ color: appTheme.primaryColor, marginTop: 32, marginBottom: 16, fontWeight: 700, textAlign: 'center' }}>Rekap Hari Ini</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255,255,255,0.96)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px #0001' }}>
+              <thead style={{ background: appTheme.primaryColor, color: '#fff' }}>
+                <tr>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Nama</th>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Kategori</th>
+                  <th style={{ padding: 12, fontWeight: 700 }}>Catatan</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 12 }}>
-        <button onClick={handleExportExcel} style={{ background: appTheme.primaryColor, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontWeight: 700, cursor: 'pointer' }}>Export Rekap Excel</button>
-        <button onClick={handleResetToday} style={{ background: '#fff', color: appTheme.primaryColor, border: `1.5px solid ${appTheme.primaryColor}`, borderRadius: 8, padding: '8px 18px', fontWeight: 700, cursor: 'pointer' }}>Reset Absensi Hari Ini</button>
-      </div>
-      <h3 style={{ color: appTheme.primaryColor, marginTop: 32, marginBottom: 16, fontWeight: 700, textAlign: 'center' }}>Rekap Hari Ini</h3>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255,255,255,0.96)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px #0001' }}>
-          <thead style={{ background: appTheme.primaryColor, color: '#fff' }}>
-            <tr>
-              <th style={{ padding: 12, fontWeight: 700 }}>Nama</th>
-              <th style={{ padding: 12, fontWeight: 700 }}>Kategori</th>
-              <th style={{ padding: 12, fontWeight: 700 }}>Catatan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rekapRecords.map((rec) => {
-              const student = students.find(s => s.id === rec.studentId);
-              return (
-                <tr key={rec.id} style={{ borderBottom: `1px solid ${appTheme.border}` }}>
-                  <td style={{ padding: 12 }}>{student ? student.name : '-'}</td>
-                  <td style={{ padding: 12 }}>{rec.category}</td>
-                  <td style={{ padding: 12 }}>{rec.note}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {rekapRecords.map((rec) => {
+                  const student = students.find(s => s.id === rec.studentId);
+                  return (
+                    <tr key={rec.id} style={{ borderBottom: `1px solid ${appTheme.border}` }}>
+                      <td style={{ padding: 12 }}>{student ? student.name : '-'}</td>
+                      <td style={{ padding: 12 }}>{rec.category}</td>
+                      <td style={{ padding: 12 }}>{rec.note}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
-}
-
-// Helper untuk mengambil seluruh data database dari localStorage
-function getRawDB() {
-  const raw = localStorage.getItem('absensi_app_db');
-  if (!raw) return { students: [], attendance: [], grades: [] };
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { students: [], attendance: [], grades: [] };
-  }
 }

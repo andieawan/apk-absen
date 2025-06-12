@@ -17,10 +17,18 @@
 // - Untuk pengembangan lebih lanjut, update profil sebaiknya terhubung ke backend/server.
 // - Komponen ini mobile-friendly dan mudah dikembangkan.
 // =============================
-import { db } from '../utils/db';
 import { appTheme } from '../utils/auth';
 import * as XLSX from 'xlsx';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { dbFirestore } from '../utils/firebase';
+import {
+  collection,
+  getDocs,
+  doc,
+  query,
+  where,
+  setDoc,
+} from 'firebase/firestore';
 
 interface TeacherPageProps {
   username: string;
@@ -34,81 +42,98 @@ interface TeacherPageProps {
  * - Admin hanya bisa melihat & mengedit data guru lain
  */
 export default function TeacherPage({ username, role }: TeacherPageProps) {
-  const teachers = db.getTeachers();
-  const subjects = db.getSubjects();
-  const schedules = db.getSchedules();
-  const classes = db.getClasses();
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [editId, setEditId] = useState<string|null>(null);
   const [editName, setEditName] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [notif, setNotif] = useState<string|null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Simulasi update profile guru (nama & password di localStorage)
-  const handleEdit = (id: string, name: string) => {
-    setEditId(id);
-    setEditName(name);
-    setEditPassword('');
-    setNotif(null);
-  };
-  const handleEditSave = () => {
+  // Ambil data guru, pelajaran, jadwal, kelas dari Firestore
+  useEffect(() => {
+    async function fetchAll() {
+      setLoading(true);
+      const snapTeachers = await getDocs(collection(dbFirestore, 'teachers'));
+      setTeachers(snapTeachers.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snapSubjects = await getDocs(collection(dbFirestore, 'subjects'));
+      setSubjects(snapSubjects.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snapSchedules = await getDocs(collection(dbFirestore, 'schedules'));
+      setSchedules(snapSchedules.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snapClasses = await getDocs(collection(dbFirestore, 'classes'));
+      setClasses(snapClasses.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
+    }
+    fetchAll();
+  }, []);
+
+  // Simpan perubahan ke Firestore
+  const handleEditSave = async () => {
     if (!editId || !editName.trim()) {
       setNotif('Nama tidak boleh kosong!');
       return;
     }
-    // Validasi username unik (khusus admin)
-    if (role === 'admin' && teachers.some(t => t.id === editId && t.name !== editName)) {
-      setNotif('Username sudah digunakan guru lain!');
-      return;
+    // Validasi username unik (khusus admin, jika mengubah username)
+    if (role === 'admin' && editId !== prevEditId) {
+      const q = query(collection(dbFirestore, 'teachers'), where('__name__', '==', editId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        setNotif('Username sudah digunakan guru lain!');
+        return;
+      }
     }
     if (editPassword && editPassword.length < 4) {
       setNotif('Password minimal 4 karakter!');
       return;
     }
-    // Update nama & username guru di db guru
-    let dbTeachers = teachers.map(t => t.id === editId ? { ...t, name: editName } : t);
-    if (role === 'admin') {
-      // Jika admin mengubah username guru, update id guru di teachers, schedules, classes (wali kelas), dan users
-      const oldGuru = teachers.find(t => t.id === editId);
-      if (oldGuru && oldGuru.id !== editId) {
-        dbTeachers = dbTeachers.map(t => t.id === oldGuru.id ? { ...t, id: editId, name: editName } : t);
-        // Update schedules
-        const dbSchedules = schedules.map(sch => sch.teacherId === oldGuru.id ? { ...sch, teacherId: editId } : sch);
-        // Update wali kelas di classes
-        const dbClasses = classes.map(k => k.homeroomTeacherId === oldGuru.id ? { ...k, homeroomTeacherId: editId } : k);
-        // Update users
-        let users = JSON.parse(localStorage.getItem('users') || '[]');
-        users = users.map((u: any) => u.username === oldGuru.id ? { ...u, username: editId, name: editName, password: editPassword || u.password } : u);
-        localStorage.setItem('users', JSON.stringify(users));
-        // Simpan perubahan ke localStorage (simulasi db)
-        const dbData = { ...db };
-        dbData.getTeachers = () => dbTeachers;
-        dbData.getSchedules = () => dbSchedules;
-        dbData.getClasses = () => dbClasses;
-        setEditId(null);
-        setEditName('');
-        setEditPassword('');
-        setNotif('Data guru berhasil diupdate!');
-        setTimeout(() => window.location.reload(), 1000);
-        return;
-      }
+    // Update guru di Firestore
+    try {
+      const updateData: any = { name: editName };
+      if (editPassword) updateData.password = editPassword;
+      await setDoc(doc(dbFirestore, 'teachers', editId), updateData, { merge: true });
+      setNotif('Data guru berhasil diupdate!');
+      setEditId(null);
+      setEditName('');
+      setEditPassword('');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (e) {
+      setNotif('Gagal update data guru!');
     }
-    // Simulasi update password di user (jika ada di user list)
-    let users = JSON.parse(localStorage.getItem('users') || '[]');
-    users = users.map((u: any) => u.role === 'subject_teacher' && u.username === editId ? { ...u, password: editPassword || u.password, name: editName } : u);
-    localStorage.setItem('users', JSON.stringify(users));
-    // Update guru di db
-    const dbData = { ...db };
-    dbData.getTeachers = () => dbTeachers;
-    setEditId(null);
-    setEditName('');
+  };
+
+  // Fungsi untuk mulai edit (admin/guru)
+  const [prevEditId, setPrevEditId] = useState<string|null>(null);
+  const handleEdit = (id: string, name: string) => {
+    setEditId(id);
+    setPrevEditId(id);
+    setEditName(name);
     setEditPassword('');
-    setNotif('Profil berhasil diupdate!');
-    setTimeout(() => window.location.reload(), 1000);
+    setNotif(null);
   };
 
   // Hanya guru yang sedang login bisa edit profil sendiri
   const canEditProfile = role !== 'admin';
   const myTeacher = teachers.find(t => t.id === username);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+        <div style={{
+          border: '4px solid #eee',
+          borderTop: `4px solid ${appTheme.primaryColor}`,
+          borderRadius: '50%',
+          width: 48,
+          height: 48,
+          animation: 'spin 1s linear infinite',
+          marginBottom: 16
+        }} />
+        <div style={{ color: appTheme.primaryColor, fontWeight: 600 }}>Memuat data guru...</div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: appTheme.card, borderRadius: appTheme.radius, boxShadow: appTheme.shadow, border: `1px solid ${appTheme.border}`, padding: 32, marginTop: 16, color: appTheme.text }}>
@@ -222,18 +247,16 @@ export default function TeacherPage({ username, role }: TeacherPageProps) {
               const subj = subjects.find(sub => sub.id === sch.subjectId);
               return `${sch.day}, ${sch.time} - ${subj ? subj.name : '-'} (${kelas ? kelas.name : '-'})`;
             });
-            // Ambil data user (username, password, role)
-            let users = JSON.parse(localStorage.getItem('users') || '[]');
-            const user = users.find((u: any) => u.username === guru.id);
-            // Cek wali kelas (boleh lebih dari satu kelas)
+            // Ambil data user (username, password, role) dari Firestore
+            // Password dan role kini diambil dari guru Firestore
             const waliKelas = classes.filter(k => k.homeroomTeacherId === guru.id).map(k => k.name).join(', ');
             return (
               <tr key={guru.id} style={{ borderBottom: `1px solid ${appTheme.border}` }}>
                 <td style={{ padding: 12 }}>{idx + 1}</td>
                 <td style={{ padding: 12 }}>{guru.name}</td>
                 <td style={{ padding: 12 }}>{guru.id}</td>
-                <td style={{ padding: 12 }}>{user ? user.password : '-'}</td>
-                <td style={{ padding: 12 }}>{user ? user.role : '-'}</td>
+                <td style={{ padding: 12 }}>{guru.password ? guru.password : '-'}</td>
+                <td style={{ padding: 12 }}>{guru.role ? guru.role : '-'}</td>
                 <td style={{ padding: 12 }}>{pelajaran.length > 0 ? pelajaran.join(', ') : '-'}</td>
                 <td style={{ padding: 12 }}>{waliKelas || '-'}</td>
                 <td style={{ padding: 12 }}>{jadwal.length > 0 ? jadwal.map((j, i) => <div key={i}>{j}</div>) : '-'}</td>
