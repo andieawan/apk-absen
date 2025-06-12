@@ -53,7 +53,7 @@ export default function ImportStudent({ onImport }: ImportStudentProps) {
 
   return (
     <div style={{ margin: '24px 0', padding: 16, background: appTheme.card, borderRadius: appTheme.radius, boxShadow: appTheme.shadow, border: `1px solid ${appTheme.border}` }}>
-      <h3 style={{ color: appTheme.primary, marginTop: 0 }}>Import Data Siswa (Excel)</h3>
+      <h3 style={{ color: appTheme.primaryColor, marginTop: 0, background: 'none', WebkitBackgroundClip: 'initial', WebkitTextFillColor: 'initial' }}>Import Data Siswa (Excel)</h3>
       <a
         href="/template_import_siswa.xlsx"
         download

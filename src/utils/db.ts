@@ -10,6 +10,7 @@
 export interface Class {
   id: string;
   name: string;
+  homeroomTeacherId?: string; // relasi ke guru wali kelas (opsional)
 }
 
 export interface Student {
@@ -143,9 +144,9 @@ export const db = {
 
 // Data dummy kelas untuk testing
 export const dummyClasses = [
-  { id: 'k1', name: 'X IPA 1' },
-  { id: 'k2', name: 'X IPA 2' },
-  { id: 'k3', name: 'X IPS 1' },
+  { id: 'k1', name: 'X IPA 1', homeroomTeacherId: 't1' },
+  { id: 'k2', name: 'X IPA 2', homeroomTeacherId: 't2' },
+  { id: 'k3', name: 'X IPS 1', homeroomTeacherId: 't3' },
 ];
 
 // Data dummy siswa untuk testing
@@ -177,23 +178,23 @@ export const dummyGrades = [
 
 // Data dummy guru untuk testing
 export const dummyTeachers = [
-  { id: 't1', name: 'Guru Besar' },
-  { id: 't2', name: 'Dra. Siti' },
-  { id: 't3', name: 'Mr. John' },
+  { id: 't1', name: 'Pak Budi' },
+  { id: 't2', name: 'Bu Sari' },
+  { id: 't3', name: 'Pak Joko' },
 ];
 
 // Data dummy pelajaran untuk testing
 export const dummySubjects = [
   { id: 'sub1', name: 'Matematika' },
-  { id: 'sub2', name: 'Bahasa Indonesia' },
+  { id: 'sub2', name: 'Bahasa Inggris' },
   { id: 'sub3', name: 'Fisika' },
 ];
 
 // Data dummy jadwal untuk testing
 export const dummySchedules = [
-  { id: 'j1', teacherId: 't1', subjectId: 'sub1', classId: 'k1', day: 'Senin', time: '08:00' },
-  { id: 'j2', teacherId: 't2', subjectId: 'sub2', classId: 'k1', day: 'Senin', time: '10:00' },
-  { id: 'j3', teacherId: 't3', subjectId: 'sub3', classId: 'k2', day: 'Selasa', time: '08:00' },
+  { id: 'sch1', teacherId: 't1', subjectId: 'sub1', classId: 'k1', day: 'Senin', time: '07:00-08:30' },
+  { id: 'sch2', teacherId: 't2', subjectId: 'sub2', classId: 'k2', day: 'Selasa', time: '08:30-10:00' },
+  { id: 'sch3', teacherId: 't3', subjectId: 'sub3', classId: 'k3', day: 'Rabu', time: '10:00-11:30' },
 ];
 
 // Fungsi untuk mengisi database dengan data dummy

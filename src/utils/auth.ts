@@ -8,6 +8,9 @@ import type { User, UserRole } from '../types/User';
 
 const users: User[] = [
   { username: 'admin', password: '1234', role: 'admin' },
+  { username: 'guru1', password: '1234', role: 'subject_teacher' },
+  { username: 'walikelas1', password: '1234', role: 'homeroom_teacher' },
+  { username: 'bk1', password: '1234', role: 'counselor' },
   // Tambahkan user lain di sini jika perlu
 ];
 

@@ -15,6 +15,8 @@ import RecapAttendancePage from './RecapAttendancePage';
 import ClassPage from './ClassPage';
 import StudentPage from './StudentPage';
 import ImportTeacherSchedule from './ImportTeacherSchedule';
+import TeacherPage from './TeacherPage';
+import SchedulePage from './SchedulePage';
 import { appTheme } from '../utils/auth';
 import { useState, useEffect } from 'react';
 
@@ -27,6 +29,7 @@ interface DashboardProps {
 export default function Dashboard({ username, role, onLogout }: DashboardProps) {
   const [page, setPage] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [menuOpen, setMenuOpen] = useState<{[key:string]: boolean}>({});
 
   // Tambahkan event listener online/offline
   useEffect(() => {
@@ -39,6 +42,36 @@ export default function Dashboard({ username, role, onLogout }: DashboardProps) 
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const toggleMenu = (key: string) => setMenuOpen(m => ({ ...m, [key]: !m[key] }));
+
+  // Filter menu sesuai role
+  function getMenuByRole(role: UserRole) {
+    if (role === 'admin') {
+      return {
+        master: true, akademik: true, laporan: true, utilitas: true
+      };
+    }
+    if (role === 'subject_teacher') {
+      return {
+        master: false, akademik: true, laporan: true, utilitas: false
+      };
+    }
+    if (role === 'homeroom_teacher') {
+      return {
+        master: false, akademik: true, laporan: true, utilitas: false
+      };
+    }
+    if (role === 'counselor') {
+      return {
+        master: false, akademik: false, laporan: true, utilitas: false
+      };
+    }
+    return { master: false, akademik: false, laporan: false, utilitas: false };
+  }
+
+  // Ganti render menu utama:
+  const menuAccess = getMenuByRole(role);
 
   return (
     <div style={{ minHeight: '100vh', background: appTheme.background, fontFamily: appTheme.font, padding: 0, margin: 0 }}>
@@ -113,36 +146,116 @@ export default function Dashboard({ username, role, onLogout }: DashboardProps) 
           ...appTheme.glass ? { backdropFilter: 'blur(8px)' } : {}
         }}>
           <h3 style={{ color: appTheme.primaryColor, marginTop: 0, fontWeight: 700, fontSize: 22, letterSpacing: 1 }}>Menu Utama</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 24, justifyContent: 'center' }}>
-            <button onClick={() => setPage('absensi')} style={{ minWidth: 140, background: page==='absensi'?appTheme.primaryColor:'#f4f6fb', color: page==='absensi'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Absensi</button>
-            <button onClick={() => setPage('rekap')} style={{ minWidth: 140, background: page==='rekap'?appTheme.primaryColor:'#f4f6fb', color: page==='rekap'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Rekap Absensi</button>
-            <button onClick={() => setPage('import')} style={{ minWidth: 140, background: page==='import'?appTheme.primaryColor:'#f4f6fb', color: page==='import'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Import Siswa</button>
-            <button onClick={() => setPage('grading')} style={{ minWidth: 140, background: page==='grading'?appTheme.primaryColor:'#f4f6fb', color: page==='grading'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Penilaian</button>
-            <button onClick={() => setPage('analytics')} style={{ minWidth: 140, background: page==='analytics'?appTheme.primaryColor:'#f4f6fb', color: page==='analytics'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Analitik</button>
-            <button onClick={() => setPage('calendar')} style={{ minWidth: 140, background: page==='calendar'?appTheme.primaryColor:'#f4f6fb', color: page==='calendar'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Kalender</button>
-            <button onClick={() => setPage('export')} style={{ minWidth: 140, background: page==='export'?appTheme.primaryColor:'#f4f6fb', color: page==='export'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Export</button>
-            <button onClick={() => setPage('kelas')} style={{ minWidth: 140, background: page==='kelas'?appTheme.primaryColor:'#f4f6fb', color: page==='kelas'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Kelas</button>
-            <button onClick={() => setPage('student')} style={{ minWidth: 140, background: page==='student'?appTheme.primaryColor:'#f4f6fb', color: page==='student'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Data Siswa</button>
-            <button onClick={() => setPage('import-teacher-schedule')} style={{ minWidth: 140, background: page==='import-teacher-schedule'?appTheme.primaryColor:'#f4f6fb', color: page==='import-teacher-schedule'?'#fff':appTheme.primaryColor, border: `2px solid ${appTheme.primaryColor}`, borderRadius: 10, padding: '16px 0', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #0001', transition: 'all 0.2s' }}>Import Guru & Jadwal</button>
+          {/* Data Master */}
+          {menuAccess.master && (
+          <div>
+            <div style={{ fontWeight: 700, cursor: 'pointer', margin: '12px 0 4px 0', color: appTheme.primaryColor }} onClick={() => toggleMenu('master')}>Data Master ▾</div>
+            {menuOpen['master'] && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+                <button onClick={() => setPage('student')} style={menuBtnStyle('student', page)}>Data Siswa</button>
+                <button onClick={() => setPage('teacher')} style={menuBtnStyle('teacher', page)}>Data Guru</button>
+                <button onClick={() => setPage('kelas')} style={menuBtnStyle('kelas', page)}>Kelas</button>
+              </div>
+            )}
           </div>
-          {!page && (
-            <div style={{ color: appTheme.text, textAlign: 'center', marginTop: 32, fontSize: 16, fontWeight: 500 }}>
-              Pilih menu di atas untuk mulai menggunakan fitur aplikasi.
-            </div>
+          )}
+          {/* Akademik */}
+          {menuAccess.akademik && (
+          <div>
+            <div style={{ fontWeight: 700, cursor: 'pointer', margin: '12px 0 4px 0', color: appTheme.primaryColor }} onClick={() => toggleMenu('akademik')}>Akademik ▾</div>
+            {menuOpen['akademik'] && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+                <button onClick={() => setPage('absensi')} style={menuBtnStyle('absensi', page)}>Absensi</button>
+                <button onClick={() => setPage('schedule')} style={menuBtnStyle('schedule', page)}>Jadwal</button>
+                <button onClick={() => setPage('grading')} style={menuBtnStyle('grading', page)}>Penilaian</button>
+              </div>
+            )}
+          </div>
+          )}
+          {/* Laporan */}
+          {menuAccess.laporan && (
+          <div>
+            <div style={{ fontWeight: 700, cursor: 'pointer', margin: '12px 0 4px 0', color: appTheme.primaryColor }} onClick={() => toggleMenu('laporan')}>Laporan ▾</div>
+            {menuOpen['laporan'] && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+                <button onClick={() => setPage('rekap')} style={menuBtnStyle('rekap', page)}>Rekap</button>
+                <button onClick={() => setPage('export')} style={menuBtnStyle('export', page)}>Export</button>
+              </div>
+            )}
+          </div>
+          )}
+          {/* Utilitas */}
+          {menuAccess.utilitas && (
+          <div>
+            <div style={{ fontWeight: 700, cursor: 'pointer', margin: '12px 0 4px 0', color: appTheme.primaryColor }} onClick={() => toggleMenu('utilitas')}>Utilitas ▾</div>
+            {menuOpen['utilitas'] && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+                <button
+                  onClick={() => setPage('import')}
+                  style={menuBtnStyle('import', page)}
+                >Import Data</button>
+              </div>
+            )}
+          </div>
           )}
         </div>
         {/* Content */}
+        {(role === 'admin' || page === 'import') && page === 'import' && (
+          <div>
+            <ImportStudent onImport={() => {}} />
+            <div style={{ height: 24 }} />
+            <ImportTeacherSchedule onImport={() => {}} />
+          </div>
+        )}
         {(role === 'admin' || page === 'absensi') && page === 'absensi' && <AttendancePage role={role} />}
         {(role === 'admin' || page === 'rekap') && page === 'rekap' && <RecapAttendancePage role={role} />}
-        {(role === 'admin' || page === 'import') && page === 'import' && <ImportStudent onImport={() => {}} />}
         {(role === 'admin' || page === 'grading') && page === 'grading' && <GradingPage />}
         {(role === 'admin' || page === 'analytics') && page === 'analytics' && <AnalyticsPage />}
         {(role === 'admin' || page === 'calendar') && page === 'calendar' && <CalendarPage />}
         {(role === 'admin' || page === 'export') && page === 'export' && <ExportPage />}
         {(role === 'admin' || page === 'kelas') && page === 'kelas' && <ClassPage />}
         {page === 'student' && <StudentPage />}
-        {(role === 'admin' || page === 'import-teacher-schedule') && page === 'import-teacher-schedule' && <ImportTeacherSchedule onImport={() => {}} />}
+        {(role === 'admin' || page === 'teacher') && page === 'teacher' && (
+          // Kirim username dan role ke TeacherPage agar fitur edit profil guru berjalan benar
+          <TeacherPage username={username} role={role} />
+        )}
+        {(role === 'admin' || page === 'schedule') && page === 'schedule' && <SchedulePage />}
+        {/* Role subject_teacher: hanya akses absensi, jadwal, penilaian, rekap, export */}
+        {role === 'subject_teacher' && page === '' && (
+          <div style={{ color: appTheme.text, textAlign: 'center', marginTop: 32, fontSize: 16, fontWeight: 500 }}>
+            Pilih menu Akademik atau Laporan untuk mulai menggunakan fitur guru mata pelajaran.
+          </div>
+        )}
+        {/* Role homeroom_teacher: akses absensi, jadwal, penilaian, rekap, export */}
+        {role === 'homeroom_teacher' && page === '' && (
+          <div style={{ color: appTheme.text, textAlign: 'center', marginTop: 32, fontSize: 16, fontWeight: 500 }}>
+            Pilih menu Akademik atau Laporan untuk mulai menggunakan fitur wali kelas.
+          </div>
+        )}
+        {/* Role counselor: hanya akses laporan */}
+        {role === 'counselor' && page === '' && (
+          <div style={{ color: appTheme.text, textAlign: 'center', marginTop: 32, fontSize: 16, fontWeight: 500 }}>
+            Pilih menu Laporan untuk melihat rekap dan export data siswa.
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+// Helper style function
+function menuBtnStyle(key: string, page: string) {
+  return {
+    minWidth: 120,
+    background: page===key?appTheme.primaryColor:'#f4f6fb',
+    color: page===key?'#fff':appTheme.primaryColor,
+    border: `2px solid ${appTheme.primaryColor}`,
+    borderRadius: 10,
+    padding: '12px 0',
+    fontWeight: 700,
+    fontSize: 15,
+    cursor: 'pointer',
+    boxShadow: '0 1px 4px #0001',
+    transition: 'all 0.2s',
+  };
 }
